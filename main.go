@@ -15,9 +15,9 @@ var (
 )
 
 type PfExporter struct {
-	fw       pf.Pf
-	gauges   map[string]prometheus.Gauge
-	counters map[string]prometheus.Counter
+	fw          pf.Pf
+	gauges      map[string]prometheus.Gauge
+	counters    map[string]prometheus.Counter
 	countervecs map[string]*prometheus.CounterVec
 }
 
@@ -93,9 +93,16 @@ func (e *PfExporter) Collect(ch chan<- prometheus.Metric) {
 }
 
 func NewPfExporter() (*PfExporter, error) {
-	fw, err := pf.Open()
-	if err != nil {
-		return nil, err
+	var fw pf.Pf
+	var err error
+
+	if *fdno != -1 {
+		fw = pf.OpenFD(uintptr(*fdno))
+	} else {
+		fw, err = pf.Open()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	exp := &PfExporter{
@@ -203,7 +210,7 @@ func NewPfExporter() (*PfExporter, error) {
 			}),
 		},
 
-		countervecs: map[string]*prometheus.CounterVec {
+		countervecs: map[string]*prometheus.CounterVec{
 			"queue_xmit_packets": prometheus.NewCounterVec(prometheus.CounterOpts{
 				Namespace: Namespace,
 				Subsystem: "stats",
@@ -242,11 +249,13 @@ func NewPfExporter() (*PfExporter, error) {
 	return exp, nil
 }
 
+var (
+	listenAddress = flag.String("web.listen-address", ":9107", "Address to listen on for web interface and telemetry.")
+	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
+	fdno          = flag.Int("pf.fd", -1, "if set, use this fd for pf ioctls")
+)
+
 func main() {
-	var (
-		listenAddress = flag.String("web.listen-address", ":9107", "Address to listen on for web interface and telemetry.")
-		metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-	)
 	flag.Parse()
 
 	exporter, err := NewPfExporter()
