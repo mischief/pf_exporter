@@ -16,23 +16,14 @@ var (
 
 type PfExporter struct {
 	fw          pf.Pf
-	gauges      map[string]prometheus.Gauge
-	counters    map[string]prometheus.Counter
-	countervecs map[string]*prometheus.CounterVec
+
+	metrics map[string]*prometheus.Desc
 }
 
 // Describe implements the prometheus.Collector interface.
 func (e *PfExporter) Describe(ch chan<- *prometheus.Desc) {
-	for _, m := range e.gauges {
-		m.Describe(ch)
-	}
-
-	for _, m := range e.counters {
-		m.Describe(ch)
-	}
-
-	for _, m := range e.countervecs {
-		m.Describe(ch)
+	for _, m := range e.metrics {
+		ch <- m
 	}
 }
 
@@ -44,26 +35,26 @@ func (e *PfExporter) Collect(ch chan<- prometheus.Metric) {
 		return
 	}
 
-	e.gauges["state_total"].Set(float64(stats.StateCount()))
-	e.counters["state_searches"].Set(float64(stats.StateSearches()))
-	e.counters["state_inserts"].Set(float64(stats.StateInserts()))
-	e.counters["state_removals"].Set(float64(stats.StateRemovals()))
+	ch <- prometheus.MustNewConstMetric(e.metrics["state_total"], prometheus.GaugeValue, float64(stats.StateCount()))
+	ch <- prometheus.MustNewConstMetric(e.metrics["state_searches"], prometheus.CounterValue, float64(stats.StateSearches()))
+	ch <- prometheus.MustNewConstMetric(e.metrics["state_inserts"], prometheus.CounterValue, float64(stats.StateInserts()))
+	ch <- prometheus.MustNewConstMetric(e.metrics["state_removals"], prometheus.CounterValue, float64(stats.StateRemovals()))
 
 	ifstats := stats.IfStats()
 	if ifstats != nil {
-		e.counters["ipv4_bytes_in"].Set(float64(ifstats.IPv4.BytesIn))
-		e.counters["ipv4_bytes_out"].Set(float64(ifstats.IPv4.BytesOut))
-		e.counters["ipv4_packets_in_passed"].Set(float64(ifstats.IPv4.PacketsInPassed))
-		e.counters["ipv4_packets_in_blocked"].Set(float64(ifstats.IPv4.PacketsInBlocked))
-		e.counters["ipv4_packets_out_passed"].Set(float64(ifstats.IPv4.PacketsOutPassed))
-		e.counters["ipv4_packets_out_blocked"].Set(float64(ifstats.IPv4.PacketsOutBlocked))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv4_bytes_in"], prometheus.CounterValue, float64(ifstats.IPv4.BytesIn))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv4_bytes_out"], prometheus.CounterValue, float64(ifstats.IPv4.BytesOut))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv4_packets_in_passed"], prometheus.CounterValue, float64(ifstats.IPv4.PacketsInPassed))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv4_packets_in_blocked"], prometheus.CounterValue, float64(ifstats.IPv4.PacketsInBlocked))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv4_packets_out_passed"], prometheus.CounterValue, float64(ifstats.IPv4.PacketsOutPassed))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv4_packets_out_blocked"], prometheus.CounterValue, float64(ifstats.IPv4.PacketsOutBlocked))
 
-		e.counters["ipv6_bytes_in"].Set(float64(ifstats.IPv6.BytesIn))
-		e.counters["ipv6_bytes_out"].Set(float64(ifstats.IPv6.BytesOut))
-		e.counters["ipv6_packets_in_passed"].Set(float64(ifstats.IPv6.PacketsInPassed))
-		e.counters["ipv6_packets_in_blocked"].Set(float64(ifstats.IPv6.PacketsInBlocked))
-		e.counters["ipv6_packets_out_passed"].Set(float64(ifstats.IPv6.PacketsOutPassed))
-		e.counters["ipv6_packets_out_blocked"].Set(float64(ifstats.IPv6.PacketsOutBlocked))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv6_bytes_in"], prometheus.CounterValue, float64(ifstats.IPv6.BytesIn))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv6_bytes_out"], prometheus.CounterValue, float64(ifstats.IPv6.BytesOut))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv6_packets_in_passed"], prometheus.CounterValue, float64(ifstats.IPv6.PacketsInPassed))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv6_packets_in_blocked"], prometheus.CounterValue, float64(ifstats.IPv6.PacketsInBlocked))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv6_packets_out_passed"], prometheus.CounterValue, float64(ifstats.IPv6.PacketsOutPassed))
+		ch <- prometheus.MustNewConstMetric(e.metrics["ipv6_packets_out_blocked"], prometheus.CounterValue, float64(ifstats.IPv6.PacketsOutBlocked))
 	}
 
 	queues, err := e.fw.Queues()
@@ -73,22 +64,10 @@ func (e *PfExporter) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	for _, queue := range queues {
-		e.countervecs["queue_xmit_packets"].WithLabelValues(queue.Name, queue.IfName).Set(float64(queue.Stats.TransmitPackets))
-		e.countervecs["queue_xmit_bytes"].WithLabelValues(queue.Name, queue.IfName).Set(float64(queue.Stats.TransmitBytes))
-		e.countervecs["queue_dropped_packets"].WithLabelValues(queue.Name, queue.IfName).Set(float64(queue.Stats.DroppedPackets))
-		e.countervecs["queue_dropped_bytes"].WithLabelValues(queue.Name, queue.IfName).Set(float64(queue.Stats.DroppedBytes))
-	}
-
-	for _, m := range e.gauges {
-		m.Collect(ch)
-	}
-
-	for _, m := range e.counters {
-		m.Collect(ch)
-	}
-
-	for _, m := range e.countervecs {
-		m.Collect(ch)
+		ch <- prometheus.MustNewConstMetric(e.metrics["queue_xmit_packets"], prometheus.CounterValue, float64(queue.Stats.TransmitPackets), queue.Name, queue.IfName)
+		ch <- prometheus.MustNewConstMetric(e.metrics["queue_xmit_bytes"], prometheus.CounterValue, float64(queue.Stats.TransmitBytes), queue.Name, queue.IfName)
+		ch <- prometheus.MustNewConstMetric(e.metrics["queue_dropped_packets"], prometheus.CounterValue, float64(queue.Stats.DroppedPackets), queue.Name, queue.IfName)
+		ch <- prometheus.MustNewConstMetric(e.metrics["queue_dropped_bytes"], prometheus.CounterValue, float64(queue.Stats.DroppedBytes), queue.Name, queue.IfName)
 	}
 }
 
@@ -105,144 +84,113 @@ func NewPfExporter() (*PfExporter, error) {
 		}
 	}
 
+
+
 	exp := &PfExporter{
 		fw: fw,
-		gauges: map[string]prometheus.Gauge{
-			"state_total": prometheus.NewGauge(prometheus.GaugeOpts{
-				Namespace: Namespace,
-				Subsystem: "state",
-				Name:      "total",
-				Help:      "Number of pf states.",
-			}),
-		},
-		counters: map[string]prometheus.Counter{
-			"state_searches": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "state",
-				Name:      "searches_total",
-				Help:      "Number of pf state searches.",
-			}),
-			"state_inserts": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "state",
-				Name:      "inserts_total",
-				Help:      "Number of pf state inserts.",
-			}),
-			"state_removals": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "state",
-				Name:      "removals_total",
-				Help:      "Number of pf state removals.",
-			}),
+		metrics: map[string]*prometheus.Desc{
+			"state_total": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "state", "total"),
+				"Number of pf states.",
+				nil,
+				nil),
+			"state_searches": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "state", "searches_total"),
+				"Number of pf state searches.",
+				nil, nil),
+			"state_inserts": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "state", "inserts_total"),
+				"Number of pf state inserts.",
+				nil,
+				nil),
+			"state_removals": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "state", "removals_total"),
+				"Number of pf state removals.",
+				nil,
+				nil),
 
-			"ipv4_bytes_in": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv4_bytes_in_total",
-				Help:      "Number of bytes in on the pf loginterface over IPv4.",
-			}),
-			"ipv4_bytes_out": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv4_bytes_out_total",
-				Help:      "Number of bytes out on the pf loginterface over IPv4.",
-			}),
-			"ipv4_packets_in_passed": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv4_packets_in_passed_total",
-				Help:      "Number of packets passed in on the pf loginterface over IPv4.",
-			}),
-			"ipv4_packets_in_blocked": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv4_packets_in_blocked_total",
-				Help:      "Number of packets blocked in on the pf loginterface over IPv4.",
-			}),
-			"ipv4_packets_out_passed": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv4_packets_out_passed_total",
-				Help:      "Number of packets passed out on the pf loginterface over IPv4.",
-			}),
-			"ipv4_packets_out_blocked": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv4_packets_out_blocked_total",
-				Help:      "Number of packets blocked out on the pf loginterface over IPv4.",
-			}),
+			"ipv4_bytes_in": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv4", "bytes_in_total"),
+				"Number of bytes in on the pf loginterface over IPv4.",
+				nil,
+				nil),
+			"ipv4_bytes_out": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv4", "bytes_out_total"),
+				"Number of bytes out on the pf loginterface over IPv4.",
+				nil,
+				nil),
+			"ipv4_packets_in_passed": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv4", "packets_in_passed_total"),
+				"Number of packets passed in on the pf loginterface over IPv4.",
+				nil,
+				nil),
+			"ipv4_packets_in_blocked": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv4", "packets_in_blocked_total"),
+				"Number of packets blocked in on the pf loginterface over IPv4.",
+				nil,
+				nil),
+			"ipv4_packets_out_passed": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv4", "packets_out_passed_total"),
+				"Number of packets passed out on the pf loginterface over IPv4.",
+				nil,
+				nil),
+			"ipv4_packets_out_blocked": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv4", "packets_out_blocked_total"),
+				"Number of packets blocked out on the pf loginterface over IPv4.",
+				nil,
+				nil),
 
-			"ipv6_bytes_in": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv6_bytes_in_total",
-				Help:      "Number of bytes in on the pf loginterface over IPv6.",
-			}),
-			"ipv6_bytes_out": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv6_bytes_out_total",
-				Help:      "Number of bytes out on the pf loginterface over IPv6.",
-			}),
-			"ipv6_packets_in_passed": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv6_packets_in_passed_total",
-				Help:      "Number of packets passed in on the pf loginterface over IPv6.",
-			}),
-			"ipv6_packets_in_blocked": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv6_packets_in_blocked_total",
-				Help:      "Number of packets blocked in on the pf loginterface over IPv6.",
-			}),
-			"ipv6_packets_out_passed": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv6_packets_out_passed_total",
-				Help:      "Number of packets passed out on the pf loginterface over IPv6.",
-			}),
-			"ipv6_packets_out_blocked": prometheus.NewCounter(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "ipv6_packets_out_blocked_total",
-				Help:      "Number of packets blocked out on the pf loginterface over IPv6.",
-			}),
-		},
+			"ipv6_bytes_in": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv6", "bytes_in_total"),
+				"Number of bytes in on the pf loginterface over IPv6.",
+				nil,
+				nil),
+			"ipv6_bytes_out": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv6", "bytes_out_total"),
+				"Number of bytes out on the pf loginterface over IPv6.",
+				nil,
+				nil),
+			"ipv6_packets_in_passed": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv6", "packets_in_passed_total"),
+				"Number of packets passed in on the pf loginterface over IPv6.",
+				nil,
+				nil),
+			"ipv6_packets_in_blocked": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv6", "packets_in_blocked_total"),
+				"Number of packets blocked in on the pf loginterface over IPv6.",
+				nil,
+				nil),
+			"ipv6_packets_out_passed": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv6", "packets_out_passed_total"),
+				"Number of packets passed out on the pf loginterface over IPv6.",
+				nil,
+				nil),
+			"ipv6_packets_out_blocked": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "ipv6", "packets_out_blocked_total"),
+				"Number of packets blocked out on the pf loginterface over IPv6.",
+				nil,
+				nil),
 
-		countervecs: map[string]*prometheus.CounterVec{
-			"queue_xmit_packets": prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "queue_transmitted_packets_total",
-				Help:      "Number of transmitted packets in a queue partitioned by queue name and interface",
-			},
+			"queue_xmit_packets": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "stats", "queue_transmitted_packets_total"),
+				"Number of transmitted packets in a queue partitioned by queue name and interface.",
 				[]string{"queue", "interface"},
-			),
-			"queue_xmit_bytes": prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "queue_transmitted_bytes_total",
-				Help:      "Number of transmitted bytes in a queue partitioned by queue name and interface",
-			},
+				nil),
+			"queue_xmit_bytes": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "stats", "queue_transmitted_bytes_total"),
+				"Number of transmitted bytes in a queue partitioned by queue name and interface.",
 				[]string{"queue", "interface"},
-			),
-			"queue_dropped_packets": prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "queue_dropped_packets_total",
-				Help:      "Number of dropped packets in a queue partitioned by queue name and interface",
-			},
+				nil),
+			"queue_dropped_packets": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "stats", "queue_dropped_packets_total"),
+				"Number of dropped packets in a queue partitioned by queue name and interface.",
 				[]string{"queue", "interface"},
-			),
-			"queue_dropped_bytes": prometheus.NewCounterVec(prometheus.CounterOpts{
-				Namespace: Namespace,
-				Subsystem: "stats",
-				Name:      "queue_dropped_bytes_total",
-				Help:      "Number of dropped bytes in a queue partitioned by queue name and interface",
-			},
+				nil),
+			"queue_dropped_bytes": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "stats", "queue_dropped_bytes_total"),
+				"Number of dropped bytes in a queue partitioned by queue name and interface.",
 				[]string{"queue", "interface"},
-			),
+				nil),
 		},
 	}
 
