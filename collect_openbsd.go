@@ -10,8 +10,6 @@ import (
 )
 
 var (
-	Namespace = "pf"
-
 	fdno = flag.Int("pf.fd", -1, "if set, use this fd for pf ioctls")
 )
 

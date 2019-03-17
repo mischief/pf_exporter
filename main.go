@@ -115,7 +115,6 @@ func NewPfExporter() (*PfExporter, error) {
 var (
 	listenAddress = flag.String("web.listen-address", ":9107", "Address to listen on for web interface and telemetry.")
 	metricsPath   = flag.String("web.telemetry-path", "/metrics", "Path under which to expose metrics.")
-	fdno          = flag.Int("pf.fd", -1, "if set, use this fd for pf ioctls")
 )
 
 func main() {
