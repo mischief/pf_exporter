@@ -1,0 +1,20 @@
+#!/bin/ksh
+
+daemon="/usr/local/bin/pf_exporter"
+daemon_logger="daemon.info"
+daemon_user="nobody"
+daemon_flags="-pf.fd 3"
+
+. /etc/rc.d/rc.subr
+
+eval "$(typeset -f rc_start | sed -e 's/rc_start/rc_start_real/' -e 's/\^I//g' -e 's/\^J//g' )"
+rc_start(){
+	3<>/dev/pf rc_start_real
+}
+
+pexp="${daemon}.*"
+rc_bg=YES
+rc_reload=NO
+
+rc_cmd $1
+
