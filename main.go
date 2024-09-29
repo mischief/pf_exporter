@@ -2,11 +2,12 @@ package main
 
 import (
 	"flag"
+	"log"
 	"net/http"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/prometheus/common/log"
 
 	"github.com/mischief/gopf"
 )
@@ -16,7 +17,8 @@ var (
 )
 
 type PfExporter struct {
-	fw          pf.Pf
+	mu sync.Mutex
+	fw pf.Pf
 
 	metrics map[string]*prometheus.Desc
 }
@@ -30,16 +32,18 @@ func (e *PfExporter) Describe(ch chan<- *prometheus.Desc) {
 
 // Collect implements the prometheus.Collector interface.
 func (e *PfExporter) Collect(ch chan<- prometheus.Metric) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
 	stats, err := e.fw.Stats()
 	if err != nil {
-		log.Errorf("failed to get pf stats: %v", err)
-		return
+		log.Printf("failed to get pf stats: %v", err)
+	} else {
+		ch <- prometheus.MustNewConstMetric(e.metrics["state_total"], prometheus.GaugeValue, float64(stats.StateCount()))
+		ch <- prometheus.MustNewConstMetric(e.metrics["state_searches"], prometheus.CounterValue, float64(stats.StateSearches()))
+		ch <- prometheus.MustNewConstMetric(e.metrics["state_inserts"], prometheus.CounterValue, float64(stats.StateInserts()))
+		ch <- prometheus.MustNewConstMetric(e.metrics["state_removals"], prometheus.CounterValue, float64(stats.StateRemovals()))
 	}
-
-	ch <- prometheus.MustNewConstMetric(e.metrics["state_total"], prometheus.GaugeValue, float64(stats.StateCount()))
-	ch <- prometheus.MustNewConstMetric(e.metrics["state_searches"], prometheus.CounterValue, float64(stats.StateSearches()))
-	ch <- prometheus.MustNewConstMetric(e.metrics["state_inserts"], prometheus.CounterValue, float64(stats.StateInserts()))
-	ch <- prometheus.MustNewConstMetric(e.metrics["state_removals"], prometheus.CounterValue, float64(stats.StateRemovals()))
 
 	ifstats := stats.IfStats()
 	if ifstats != nil {
@@ -60,15 +64,14 @@ func (e *PfExporter) Collect(ch chan<- prometheus.Metric) {
 
 	queues, err := e.fw.Queues()
 	if err != nil {
-		log.Errorf("failed to get queue stats: %v", err)
-		return
-	}
-
-	for _, queue := range queues {
-		ch <- prometheus.MustNewConstMetric(e.metrics["queue_xmit_packets"], prometheus.CounterValue, float64(queue.Stats.TransmitPackets), queue.Name, queue.IfName)
-		ch <- prometheus.MustNewConstMetric(e.metrics["queue_xmit_bytes"], prometheus.CounterValue, float64(queue.Stats.TransmitBytes), queue.Name, queue.IfName)
-		ch <- prometheus.MustNewConstMetric(e.metrics["queue_dropped_packets"], prometheus.CounterValue, float64(queue.Stats.DroppedPackets), queue.Name, queue.IfName)
-		ch <- prometheus.MustNewConstMetric(e.metrics["queue_dropped_bytes"], prometheus.CounterValue, float64(queue.Stats.DroppedBytes), queue.Name, queue.IfName)
+		log.Printf("failed to get queue stats: %v", err)
+	} else {
+		for _, queue := range queues {
+			ch <- prometheus.MustNewConstMetric(e.metrics["queue_xmit_packets"], prometheus.CounterValue, float64(queue.Stats.TransmitPackets), queue.Name, queue.IfName)
+			ch <- prometheus.MustNewConstMetric(e.metrics["queue_xmit_bytes"], prometheus.CounterValue, float64(queue.Stats.TransmitBytes), queue.Name, queue.IfName)
+			ch <- prometheus.MustNewConstMetric(e.metrics["queue_dropped_packets"], prometheus.CounterValue, float64(queue.Stats.DroppedPackets), queue.Name, queue.IfName)
+			ch <- prometheus.MustNewConstMetric(e.metrics["queue_dropped_bytes"], prometheus.CounterValue, float64(queue.Stats.DroppedBytes), queue.Name, queue.IfName)
+		}
 	}
 }
 
@@ -84,8 +87,6 @@ func NewPfExporter() (*PfExporter, error) {
 			return nil, err
 		}
 	}
-
-
 
 	exp := &PfExporter{
 		fw: fw,
@@ -212,10 +213,12 @@ func main() {
 		log.Fatalf("Failed to create pf exporter: %v", err)
 	}
 
-	prometheus.MustRegister(exporter)
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(exporter)
 
-	log.Infof("Starting Server: %s", *listenAddress)
-	http.Handle(*metricsPath, promhttp.Handler())
+	log.Printf("Starting Server: %s", *listenAddress)
+
+	http.Handle(*metricsPath, promhttp.HandlerFor(reg, promhttp.HandlerOpts{ErrorLog: log.Default(), Registry: reg}))
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(`<html>
              <head><title>pf Exporter</title></head>
