@@ -3,7 +3,7 @@ module github.com/mischief/pf_exporter
 go 1.21.12
 
 require (
-	github.com/mischief/gopf v0.0.0-20240929044818-97272bc4a0b6
+	github.com/mischief/gopf v0.0.0-20240929051726-ccbbbc6db7da
 	github.com/prometheus/client_golang v1.20.4
 )
 

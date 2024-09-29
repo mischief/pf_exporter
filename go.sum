@@ -10,6 +10,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/mischief/gopf v0.0.0-20240929044818-97272bc4a0b6 h1:R6TMfBBFb2LLXUGtbvfry363p99c+KXRR5B6oqvRXP8=
 github.com/mischief/gopf v0.0.0-20240929044818-97272bc4a0b6/go.mod h1:kGj0Ead6nsFvzaBKNO0YV+bKMlwdBATtNcDEAH9RB78=
+github.com/mischief/gopf v0.0.0-20240929051726-ccbbbc6db7da h1:Fpoz81k2OYGKIPnW/3BKeGtImvVd+ReYPliBF94SnRI=
+github.com/mischief/gopf v0.0.0-20240929051726-ccbbbc6db7da/go.mod h1:kGj0Ead6nsFvzaBKNO0YV+bKMlwdBATtNcDEAH9RB78=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/prometheus/client_golang v1.20.4 h1:Tgh3Yr67PaOv/uTqloMsCEdeuFTatm5zIq5+qNN23vI=
