@@ -12,6 +12,8 @@ github.com/mischief/gopf v0.0.0-20260413190705-be6edce3a4f6 h1:KnsE/mXsMtwrtrMjU
 github.com/mischief/gopf v0.0.0-20260413190705-be6edce3a4f6/go.mod h1:kGj0Ead6nsFvzaBKNO0YV+bKMlwdBATtNcDEAH9RB78=
 github.com/mischief/gopf v0.0.0-20260415205714-6744eac16e2f h1:JcXe21SYiOUooswGUHUSEfy2D2qNWkvsWeKfACLBfF4=
 github.com/mischief/gopf v0.0.0-20260415205714-6744eac16e2f/go.mod h1:kGj0Ead6nsFvzaBKNO0YV+bKMlwdBATtNcDEAH9RB78=
+github.com/mischief/gopf v0.0.0-20260812002121-88dbf708d8bb h1:bOTYFSeHkiCLCENe9dehBgbV92vLEy9xCtTBlefKMrI=
+github.com/mischief/gopf v0.0.0-20260812002121-88dbf708d8bb/go.mod h1:kGj0Ead6nsFvzaBKNO0YV+bKMlwdBATtNcDEAH9RB78=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 h1:C3w9PqII01/Oq1c1nUAm88MOHcQC9l5mIlSMApZMrHA=
 github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
 github.com/prometheus/client_golang v1.20.4 h1:Tgh3Yr67PaOv/uTqloMsCEdeuFTatm5zIq5+qNN23vI=
