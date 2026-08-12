@@ -82,6 +82,22 @@ func (e *PfExporter) Collect(ch chan<- prometheus.Metric) {
 		}
 	}
 
+	tables, err := e.fw.Tables()
+	if err != nil {
+		log.Printf("failed to get table stats: %v", err)
+	} else {
+		for _, t := range tables {
+			labels := []string{t.Name, t.Anchor}
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_addresses"], prometheus.GaugeValue, float64(t.Addresses), labels...)
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_matches"], prometheus.CounterValue, float64(t.Match), labels...)
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_nomatches"], prometheus.CounterValue, float64(t.NoMatch), labels...)
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_packets_in"], prometheus.CounterValue, float64(t.PacketsIn), labels...)
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_packets_out"], prometheus.CounterValue, float64(t.PacketsOut), labels...)
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_bytes_in"], prometheus.CounterValue, float64(t.BytesIn), labels...)
+			ch <- prometheus.MustNewConstMetric(e.metrics["table_bytes_out"], prometheus.CounterValue, float64(t.BytesOut), labels...)
+		}
+	}
+
 	e.collectRulesForAnchor(ch, "")
 
 	anchors, err := e.fw.Anchors()
@@ -244,6 +260,42 @@ func NewPfExporter() (*PfExporter, error) {
 				prometheus.BuildFQName(Namespace, "stats", "queue_dropped_bytes_total"),
 				"Number of dropped bytes in a queue partitioned by queue name and interface.",
 				[]string{"queue", "interface"},
+				nil),
+
+			"table_addresses": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "addresses"),
+				"Number of addresses in a pf table.",
+				[]string{"table", "anchor"},
+				nil),
+			"table_matches": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "matches_total"),
+				"Number of packets matched against a pf table.",
+				[]string{"table", "anchor"},
+				nil),
+			"table_nomatches": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "nomatches_total"),
+				"Number of packets checked against a pf table without a match.",
+				[]string{"table", "anchor"},
+				nil),
+			"table_packets_in": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "packets_in_total"),
+				"Number of inbound packets matched by a pf table.",
+				[]string{"table", "anchor"},
+				nil),
+			"table_packets_out": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "packets_out_total"),
+				"Number of outbound packets matched by a pf table.",
+				[]string{"table", "anchor"},
+				nil),
+			"table_bytes_in": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "bytes_in_total"),
+				"Number of inbound bytes matched by a pf table.",
+				[]string{"table", "anchor"},
+				nil),
+			"table_bytes_out": prometheus.NewDesc(
+				prometheus.BuildFQName(Namespace, "table", "bytes_out_total"),
+				"Number of outbound bytes matched by a pf table.",
+				[]string{"table", "anchor"},
 				nil),
 
 			"rule_evaluations": prometheus.NewDesc(
